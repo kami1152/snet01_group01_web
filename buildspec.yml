@@ -30,13 +30,7 @@ phases:
       
   build:
     commands:
-      # Flutter 의존성 설치
-      - flutter pub get
-      
-      # Flutter 웹 빌드
-      - flutter build web --release
-      
-      # Docker 이미지 빌드
+      # Docker 이미지 빌드 (Flutter 빌드는 Docker 내부에서 처리)
       - echo Build started on `date`
       - echo Building the Docker image...
       - docker build -f Dockerfile.web -t $IMAGE_REPO_NAME:$IMAGE_TAG .
