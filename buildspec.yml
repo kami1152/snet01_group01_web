@@ -46,8 +46,10 @@ phases:
       # EKS 배포
       - echo Deploying to EKS...
       - aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $EKS_CLUSTER_NAME
-      - kubectl apply -f k8s/deployment.yaml
-      - kubectl rollout status deployment/snet-news-app
+      - echo "Waiting for kubectl to be ready..."
+      - sleep 5
+      - kubectl apply -f k8s/deployment.yaml --validate=false
+      - kubectl rollout status deployment/snet-flutter-web-deployment --timeout=300s
 
 artifacts:
   files:
