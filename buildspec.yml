@@ -1,0 +1,60 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: "ap-northeast-2"  # 서울 리전
+    EKS_CLUSTER_NAME: "group01-autosacling-cluster-01"
+    IMAGE_REPO_NAME: "snet-flutter-web"
+    IMAGE_TAG: "latest"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      # Flutter 설치
+      - echo "Flutter 설치 시작..."
+      - git clone https://github.com/flutter/flutter.git /flutter
+      - export PATH="$PATH:/flutter/bin"
+      - flutter doctor --disable-analytics
+      - flutter config --enable-web --no-analytics
+      
+  pre_build:
+    commands:
+      # ECR 로그인
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin 236528210774.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      
+      # ECR 리포지토리 생성 (없는 경우)
+      - aws ecr describe-repositories --repository-names $IMAGE_REPO_NAME || aws ecr create-repository --repository-name $IMAGE_REPO_NAME
+      
+  build:
+    commands:
+      # Flutter 의존성 설치
+      - flutter pub get
+      
+      # Flutter 웹 빌드
+      - flutter build web --release
+      
+      # Docker 이미지 빌드
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -f Dockerfile.web -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG 236528210774.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      
+  post_build:
+    commands:
+      # ECR에 이미지 푸시
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push 236528210774.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      
+      # EKS 배포
+      - echo Deploying to EKS...
+      - aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $EKS_CLUSTER_NAME
+      - kubectl apply -f k8s/deployment.yaml
+      - kubectl rollout status deployment/snet-news-app
+
+artifacts:
+  files:
+    - '**/*'
