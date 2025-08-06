@@ -19,6 +19,10 @@ phases:
       - flutter doctor --disable-analytics
       - flutter config --enable-web --no-analytics
       
+      # eksctl 설치 (EKS 관리 도구)
+      - curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+      - mv /tmp/eksctl /usr/local/bin
+      
   pre_build:
     commands:
       # ECR 로그인
@@ -46,10 +50,12 @@ phases:
       # EKS 배포
       - echo Deploying to EKS...
       - aws eks update-kubeconfig --region $AWS_DEFAULT_REGION --name $EKS_CLUSTER_NAME
+      - echo "Adding CodeBuild role to EKS cluster auth..."
+      - eksctl create iamidentitymapping --cluster $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION --arn arn:aws:iam::236528210774:role/codebuild-snet05_group01webbeta01-service-role --group system:masters --username codebuild-service-role || echo "Role mapping already exists"
       - echo "Waiting for kubectl to be ready..."
-      - sleep 5
+      - sleep 10
       - kubectl apply -f k8s/deployment.yaml --validate=false
-      - kubectl rollout status deployment/snet-flutter-web-deployment --timeout=300s
+      - kubectl rollout status deployment/snet-news-app --timeout=300s
 
 artifacts:
   files:
