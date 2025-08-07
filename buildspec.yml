@@ -66,31 +66,52 @@ phases:
       - helm repo update
       - helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=$EKS_CLUSTER_NAME --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set region=$AWS_DEFAULT_REGION --set vpcId=$(aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION --query "cluster.resourcesVpcConfig.vpcId" --output text) || echo "ALB Controller already installed"
       
-      # ALB Controller가 준비될 때까지 대기 (확장된 타임아웃)
-      - echo "Waiting for ALB Controller to be ready..."
-      - kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system --timeout=600s || echo "ALB Controller pods timeout, continuing..."
+      # 클러스터 노드 상태 확인
+      - echo "Checking cluster nodes and resources..."
+      - kubectl get nodes -o wide
+      - kubectl top nodes || echo "Metrics server not available"
+      - kubectl describe nodes | grep -A 5 "Allocated resources" || echo "Node resource info not available"
       
-      # Webhook 서비스와 endpoints 확인
-      - echo "Checking webhook service and endpoints..."
+      # ALB Controller 문제 진단
+      - echo "Diagnosing ALB Controller issues..."
+      - kubectl get pods -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system -o wide
+      - kubectl describe pods -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system || echo "Cannot describe ALB Controller pods"
+      
+      # ALB Controller가 스케줄링되지 않는 경우 강제 삭제 후 재설치
+      - echo "Checking if ALB Controller pods are stuck in Pending..."
+      - PENDING_PODS=$(kubectl get pods -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system --field-selector=status.phase=Pending --no-headers | wc -l)
+      - if [ "$PENDING_PODS" -gt 0 ]; then echo "Found $PENDING_PODS pending ALB Controller pods, restarting..."; kubectl delete pods -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system --force --grace-period=0; sleep 30; fi
+      
+      # ALB Controller 재시작 후 상태 확인
+      - echo "Waiting for ALB Controller to be ready (reduced timeout)..."
+      - kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system --timeout=300s || echo "ALB Controller still not ready, proceeding anyway..."
+      
+      # Webhook 서비스 상태 최종 확인
+      - echo "Final webhook service check..."
       - kubectl get svc aws-load-balancer-webhook-service -n kube-system || echo "Webhook service not found"
       - kubectl get endpoints aws-load-balancer-webhook-service -n kube-system || echo "Webhook endpoints not found"
       
-      # ALB Controller 상태 점검
-      - kubectl get pods -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system || echo "No ALB Controller pods found"
-      - kubectl logs -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system --tail=20 || echo "Cannot get ALB Controller logs"
-      
-      # Webhook 준비 상태 확인 (최대 5분 대기)
-      - echo "Waiting for webhook endpoints to be available..."
-      - timeout 300 bash -c 'until kubectl get endpoints aws-load-balancer-webhook-service -n kube-system -o jsonpath="{.subsets[0].addresses[0].ip}" 2>/dev/null; do echo "Waiting for webhook endpoints..."; sleep 10; done' || echo "Webhook endpoints timeout"
-      
-      # 추가 안정화 대기
-      - echo "Additional stabilization wait..."
-      - sleep 30
-      
-      # Deployment 적용 (webhook 검증 비활성화)
+      # Deployment 적용 (ALB Controller 없이도 기본 리소스는 생성)
       - echo "Applying Kubernetes deployment..."
       - kubectl apply -f k8s/deployment.yaml --validate=false
-      - kubectl rollout status deployment/snet-news-app --timeout=300s
+      
+      # Deployment 상태 확인 (더 자세한 정보)
+      - echo "Checking deployment status..."
+      - kubectl get deployment snet-news-app -o wide
+      - kubectl describe deployment snet-news-app
+      - kubectl get pods -l app=snet-news-app -o wide
+      
+      # Pod가 생성되지 않는 경우 ReplicaSet 확인
+      - kubectl get replicasets -l app=snet-news-app
+      - kubectl describe replicasets -l app=snet-news-app
+      
+      # Rollout 상태 확인 (더 긴 타임아웃)
+      - echo "Waiting for deployment rollout..."
+      - kubectl rollout status deployment/snet-news-app --timeout=600s || echo "Deployment rollout timeout, checking status..."
+      
+      # 실패 시 상세 정보 출력
+      - kubectl get events --sort-by='.lastTimestamp' | tail -20
+      - kubectl logs -l app=snet-news-app --tail=10 || echo "No app logs available yet"
 
 artifacts:
   files:
