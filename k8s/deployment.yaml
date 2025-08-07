@@ -5,7 +5,7 @@ metadata:
   labels:
     app: snet-news-app
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: snet-news-app
@@ -19,13 +19,13 @@ spec:
         image: 236528210774.dkr.ecr.ap-northeast-2.amazonaws.com/snet-flutter-web:latest
         ports:
         - containerPort: 80
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
+        # resources:
+        #   requests:
+        #     memory: "128Mi"
+        #     cpu: "100m"
+        #   limits:
+        #     memory: "256Mi"
+        #     cpu: "200m"
         livenessProbe:
           httpGet:
             path: /
@@ -67,8 +67,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-  - host: news.snetgroup.com  # 원하는 도메인으로 변경
-    http:
+  - http:
       paths:
       - path: /
         pathType: Prefix
