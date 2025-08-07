@@ -59,11 +59,13 @@ kind: Ingress
 metadata:
   name: snet-news-app-ingress
   annotations:
-    kubernetes.io/ingress.class: "alb"
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/load-balancer-name: snet-news-alb
+    alb.ingress.kubernetes.io/group.name: snet-news-group
 spec:
+  ingressClassName: alb
   rules:
   - host: news.snetgroup.com  # 원하는 도메인으로 변경
     http:

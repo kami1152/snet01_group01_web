@@ -56,10 +56,9 @@ phases:
       - echo "Adding CodeBuild role to EKS cluster auth..."
       - eksctl create iamidentitymapping --cluster $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION --arn arn:aws:iam::236528210774:role/codebuild-snet05_group01webbeta01-service-role --group system:masters --username codebuild-service-role || echo "Role mapping already exists"
       
-      # AWS Load Balancer Controller 설치
+      # AWS Load Balancer Controller 설치 (기존 설정 재사용)
       - echo "Setting up AWS Load Balancer Controller..."
-      - eksctl utils associate-iam-oidc-provider --cluster $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION --approve || echo "OIDC provider already exists"
-      - eksctl create iamserviceaccount --cluster=$EKS_CLUSTER_NAME --region=$AWS_DEFAULT_REGION --namespace=kube-system --name=aws-load-balancer-controller --role-name "AmazonEKSLoadBalancerControllerRole" --attach-policy-arn=arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess --override-existing-serviceaccounts --approve || echo "ServiceAccount already exists"
+      - echo "OIDC provider and ServiceAccount setup skipped - using existing configuration"
       
       # Helm으로 ALB Controller 설치
       - echo "Installing AWS Load Balancer Controller via Helm..."
@@ -67,13 +66,29 @@ phases:
       - helm repo update
       - helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller -n kube-system --set clusterName=$EKS_CLUSTER_NAME --set serviceAccount.create=false --set serviceAccount.name=aws-load-balancer-controller --set region=$AWS_DEFAULT_REGION --set vpcId=$(aws eks describe-cluster --name $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION --query "cluster.resourcesVpcConfig.vpcId" --output text) || echo "ALB Controller already installed"
       
-      # ALB Controller가 준비될 때까지 대기
+      # ALB Controller가 준비될 때까지 대기 (확장된 타임아웃)
       - echo "Waiting for ALB Controller to be ready..."
-      - kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system --timeout=300s || echo "ALB Controller pods not found, continuing..."
+      - kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system --timeout=600s || echo "ALB Controller pods timeout, continuing..."
       
-      # 애플리케이션 배포
-      - echo "Waiting for kubectl to be ready..."
-      - sleep 10
+      # Webhook 서비스와 endpoints 확인
+      - echo "Checking webhook service and endpoints..."
+      - kubectl get svc aws-load-balancer-webhook-service -n kube-system || echo "Webhook service not found"
+      - kubectl get endpoints aws-load-balancer-webhook-service -n kube-system || echo "Webhook endpoints not found"
+      
+      # ALB Controller 상태 점검
+      - kubectl get pods -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system || echo "No ALB Controller pods found"
+      - kubectl logs -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system --tail=20 || echo "Cannot get ALB Controller logs"
+      
+      # Webhook 준비 상태 확인 (최대 5분 대기)
+      - echo "Waiting for webhook endpoints to be available..."
+      - timeout 300 bash -c 'until kubectl get endpoints aws-load-balancer-webhook-service -n kube-system -o jsonpath="{.subsets[0].addresses[0].ip}" 2>/dev/null; do echo "Waiting for webhook endpoints..."; sleep 10; done' || echo "Webhook endpoints timeout"
+      
+      # 추가 안정화 대기
+      - echo "Additional stabilization wait..."
+      - sleep 30
+      
+      # Deployment 적용 (webhook 검증 비활성화)
+      - echo "Applying Kubernetes deployment..."
       - kubectl apply -f k8s/deployment.yaml --validate=false
       - kubectl rollout status deployment/snet-news-app --timeout=300s
 
