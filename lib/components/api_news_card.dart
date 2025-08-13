@@ -43,7 +43,7 @@ class ApiNewsCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           print('이미지 로딩 실패: ${news.imageUrl}');
-                          print('S3 경로: ${news.s3Key ?? '없음'}');
+                          print('CloudFront URL: ${news.cloudfrontImageUrl ?? '없음'}');
                           print('오류: $error');
                           // 프록시 실패 시 원본 URL로 재시도
                           return Image.network(
