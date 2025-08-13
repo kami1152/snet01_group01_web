@@ -133,7 +133,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(width: 8),
               Text(
-                'IOI NEWS',
+                'IOI NEWS Version 0.1',
                 style: Theme.of(context).appBarTheme.titleTextStyle,
               ),
             ],

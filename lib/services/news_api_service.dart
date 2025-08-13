@@ -10,7 +10,7 @@ class NewsApiService {
   );
   static const String contentListEndpoint = String.fromEnvironment(
     'NEWS_LIST_PATH',
-    defaultValue: '/api/news', // 새로운 API 엔드포인트
+    defaultValue: '/api/news',
   );
   
   // API 키가 필요한 경우를 위한 헤더
