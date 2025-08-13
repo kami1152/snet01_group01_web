@@ -1,5 +1,4 @@
 class ApiNewsModel {
-  final String uid;
   final String id;
   final String title;
   final String description;
@@ -7,15 +6,13 @@ class ApiNewsModel {
   final String originallink;
   final String link;
   final String pubDate;
-  final String? imageUrl;          // CloudFront URL
-  final String? s3Key;            // S3 경로
-  final String? originalImageUrl;  // 원본 이미지 URL
+  final String? imageUrl;          // 원본 이미지 URL
+  final String? cloudfrontImageUrl; // CloudFront URL
   final String collectedAt;
   final String contentType;
   final String source;
 
   ApiNewsModel({
-    required this.uid,
     required this.id,
     required this.title,
     required this.description,
@@ -24,8 +21,7 @@ class ApiNewsModel {
     required this.link,
     required this.pubDate,
     this.imageUrl,
-    this.s3Key,
-    this.originalImageUrl,
+    this.cloudfrontImageUrl,
     required this.collectedAt,
     required this.contentType,
     required this.source,
@@ -33,7 +29,6 @@ class ApiNewsModel {
 
   factory ApiNewsModel.fromJson(Map<String, dynamic> json) {
     return ApiNewsModel(
-      uid: json['uid'] ?? '',
       id: json['id'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
@@ -41,9 +36,8 @@ class ApiNewsModel {
       originallink: json['originallink'] ?? '',
       link: json['link'] ?? '',
       pubDate: json['pubDate'] ?? '',
-      imageUrl: json['image_url'],           // CloudFront URL
-      s3Key: json['s3_key'],                // S3 경로
-      originalImageUrl: json['original_image_url'],  // 원본 이미지 URL
+      imageUrl: json['image_url'],           // 원본 이미지 URL
+      cloudfrontImageUrl: json['cloudfront_image_url'],  // CloudFront URL
       collectedAt: json['collected_at'] ?? '',
       contentType: json['content_type'] ?? '',
       source: json['source'] ?? '',
@@ -52,7 +46,6 @@ class ApiNewsModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'uid': uid,
       'id': id,
       'title': title,
       'description': description,
@@ -60,9 +53,8 @@ class ApiNewsModel {
       'originallink': originallink,
       'link': link,
       'pubDate': pubDate,
-      'image_url': imageUrl,              // CloudFront URL
-      's3_key': s3Key,                   // S3 경로
-      'original_image_url': originalImageUrl,  // 원본 이미지 URL
+      'image_url': imageUrl,              // 원본 이미지 URL
+      'cloudfront_image_url': cloudfrontImageUrl,  // CloudFront URL
       'collected_at': collectedAt,
       'content_type': contentType,
       'source': source,

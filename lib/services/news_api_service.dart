@@ -3,8 +3,15 @@ import 'package:http/http.dart' as http;
 import '../models/api_news_model.dart';
 
 class NewsApiService {
-  static const String baseUrl = 'https://vuqoe082fg.execute-api.ap-northeast-3.amazonaws.com/version01';
-  static const String contentListEndpoint = '/content/content_list';
+  // NOTE: Allow overriding via --dart-define for local/dev/prod without code changes
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://snet-news-alb-1742498894.ap-northeast-2.elb.amazonaws.com',
+  );
+  static const String contentListEndpoint = String.fromEnvironment(
+    'NEWS_LIST_PATH',
+    defaultValue: '/api/news', // 새로운 API 엔드포인트
+  );
   
   // API 키가 필요한 경우를 위한 헤더
   static Map<String, String> get headers => {

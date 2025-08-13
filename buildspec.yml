@@ -91,9 +91,17 @@ phases:
       - kubectl get svc aws-load-balancer-webhook-service -n kube-system || echo "Webhook service not found"
       - kubectl get endpoints aws-load-balancer-webhook-service -n kube-system || echo "Webhook endpoints not found"
       
+      # News API 이미지 풀
+      - echo "Pulling News API image..."
+      - docker pull yulee0461/news-api:latest
+      
       # Deployment 적용 (ALB Controller 없이도 기본 리소스는 생성)
       - echo "Applying Kubernetes deployment..."
       - kubectl apply -f k8s/deployment.yaml --validate=false
+      
+      # HPA 적용 (자동 스케일링)
+      - echo "Applying HPA configuration..."
+      - kubectl apply -f k8s/hpa.yaml --validate=false
       
       # Deployment 상태 확인 (더 자세한 정보)
       - echo "Checking deployment status..."
