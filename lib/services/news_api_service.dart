@@ -6,7 +6,7 @@ class NewsApiService {
   // NOTE: Allow overriding via --dart-define for local/dev/prod without code changes
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://snet-news-alb-1742498894.ap-northeast-2.elb.amazonaws.com',
+    defaultValue: 'http://snet-news-alb-1742498894.ap-northeast-2.elb.amazonaws.com',  // 강제로 http 사용
   );
   static const String contentListEndpoint = String.fromEnvironment(
     'NEWS_LIST_PATH',
